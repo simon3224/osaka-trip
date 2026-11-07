@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="電車3D">
+<meta name="theme-color" content="#060a16">
+<title>電車 3D 導航（大阪・東京・台北）</title>
+<style>
+:root{--bg:#060a16;--card:#0f1930;--card2:#16223f;--line:#22335a;--tx:#eaf0fc;--mut:#93a3c4;--acc:#ffb547;--ok:#3ddc97;--bad:#ff5d6c}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Hiragino Sans","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+body{overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+a{color:#8cc4ff}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+#stage{position:relative;height:44vh;height:44dvh;min-height:230px;flex:none;transition:height .3s ease;overflow:hidden}
+body.big #stage{height:70vh;height:70dvh}
+#c3d{width:100%;height:100%;display:block;touch-action:none}
+#topbar{position:absolute;inset:0 0 auto 0;padding:calc(env(safe-area-inset-top) + 8px) 12px 18px;display:flex;align-items:center;gap:8px;background:linear-gradient(#060a16ee,#060a1600);pointer-events:none}
+#topbar .title{font-weight:800;font-size:16px;letter-spacing:.5px;flex:1;text-align:left;pointer-events:auto;padding:0}
+#topbar .title i{font-style:normal;font-size:12px;color:var(--acc)}
+#topbar .title small{display:block;font-weight:500;font-size:11px;color:var(--mut);letter-spacing:0}
+.citylist{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.citylist button{display:flex;justify-content:space-between;align-items:center;text-align:left;padding:14px;border-radius:14px;background:var(--card2);border:1px solid var(--line)}
+.citylist button.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.citylist b{font-size:17px}
+.fab{pointer-events:auto;width:38px;height:38px;border-radius:12px;background:#0f1930cc;border:1px solid var(--line);font-size:17px;display:grid;place-items:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#miniHud{position:absolute;left:10px;right:10px;bottom:10px;display:none;align-items:center;gap:8px;padding:9px 12px;border-radius:14px;background:#0b1428e6;border:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:14px}
+#miniHud.show{display:flex}
+#miniHud .mh-t{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#miniHud b{color:var(--acc)}
+#tabs{display:flex;background:#0a1224;border-top:1px solid var(--line);border-bottom:1px solid var(--line);flex:none}
+#tabs button{flex:1;padding:11px 0 9px;font-size:13px;white-space:nowrap;color:var(--mut);position:relative}
+#tabs button.on{color:var(--tx);font-weight:700}
+#tabs button.on:after{content:"";position:absolute;left:28%;right:28%;bottom:0;height:3px;border-radius:3px;background:var(--acc)}
+#panel{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px calc(env(safe-area-inset-bottom) + 28px)}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.mut{color:var(--mut);font-size:13px}
+small{color:var(--mut)}
+.row{display:flex;gap:8px;margin-top:10px}
+.row>*{flex:1}
+.primary{background:linear-gradient(135deg,#ffb547,#ff8a3d);color:#1b1206;font-weight:800;border-radius:12px;padding:13px 10px;font-size:15px;width:100%}
+.sec{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 8px;font-size:14px;width:100%}
+.danger{color:#ff9aa4}
+.od{display:grid;grid-template-columns:1fr 40px;grid-template-rows:auto auto;gap:8px;align-items:center}
+.stbtn{grid-column:1;text-align:left;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:58px;display:flex;flex-direction:column;justify-content:center}
+.stbtn .lbl{font-size:11px;color:var(--mut)}
+.stbtn .val{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.stbtn .val b{font-size:17px}
+.ph{color:var(--mut)}
+#swap{grid-column:2;grid-row:1 / span 2;height:100%;border-radius:12px;background:var(--card2);border:1px solid var(--line);font-size:18px}
+.bl{display:inline-flex;gap:3px;flex-wrap:wrap;margin-left:auto}
+.badge{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 4px;border-radius:7px;border:3px solid var(--c);background:#fff;color:#111;font-weight:900;font-size:11px;line-height:1;flex:none}
+.chk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;color:var(--mut)}
+.chk input{width:18px;height:18px;accent-color:var(--acc)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:14px}
+.chip.on{background:var(--acc);color:#1b1206;border-color:var(--acc);font-weight:700}
+.sum .big{font-size:30px;font-weight:900}
+.sum .big small{font-size:15px}
+.ext{display:block;text-align:center;margin-top:10px;font-size:13px}
+.tl{position:relative;margin:4px 0 12px 8px;padding-left:20px;border-left:2px dashed #2a3c66}
+.tl-i{position:relative;margin:0 0 12px}
+.tl-i>i{position:absolute;left:-28px;top:4px;width:14px;height:14px;border-radius:50%;background:#2a3c66;border:3px solid var(--bg)}
+.tl-i.start>i{background:var(--ok)}.tl-i.end>i{background:var(--bad)}
+.tl-i.ride>i{background:var(--c);top:14px}
+.tl-i.walk{font-size:14px;color:var(--mut)}
+.ride-card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:14px;padding:12px}
+.rc-h{display:flex;gap:10px;align-items:center}
+.rc-h .badge{min-width:30px;height:30px;font-size:13px;border-width:4px;border-color:var(--c)}
+.rc-h b{display:block;font-size:16px}
+.rc-h small{font-size:12px}
+.rc-d{margin-top:8px;font-size:15px}
+.rc-m{margin-top:4px;font-size:14px;line-height:1.5}
+details{margin-top:6px;font-size:14px}
+summary{color:#8cc4ff;cursor:pointer}
+ol{margin:6px 0 0;padding-left:22px;line-height:1.7}
+.tip{margin-top:8px;font-size:13px;color:#ffd99a;background:#2a210e66;border-radius:10px;padding:8px 10px;line-height:1.5}
+.note{font-size:12px;color:var(--mut);line-height:1.55}
+.exit{border-color:#3a4f7a}
+.spot .sp-h b{font-size:16px}
+.spot .mut{margin-top:4px;line-height:1.5}
+.sp-st{margin-top:8px;font-size:14px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.ridebox{border-top:4px solid var(--c)}
+.ride-main{padding:12px 0 6px}
+.ph-l{font-size:14px;color:var(--mut)}
+.big2{font-size:30px;font-weight:900;margin:4px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.big2 .badge{min-width:30px;height:30px;font-size:13px}
+.big2.alert{color:var(--acc);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.55}}
+.dir{font-size:16px;margin-bottom:4px}
+.warn{background:#ff8a3d22;border:1px solid #ff8a3d;color:#ffc58f;border-radius:10px;padding:8px 10px;font-weight:700;margin-top:6px}
+.prog{height:6px;background:#1c2a4a;border-radius:6px;overflow:hidden;margin:8px 0}
+.prog i{display:block;height:100%;background:var(--c);transition:width .5s}
+.strip{display:flex;align-items:center;gap:4px;overflow-x:auto;padding:6px 0;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.sx{flex:none;font-size:13px;padding:5px 9px;border-radius:999px;background:var(--card2);color:var(--mut);white-space:nowrap}
+.sx.past{opacity:.45}
+.sx.cur{background:var(--c);color:#fff;font-weight:700}
+.sx.next{background:#fff;color:#111;font-weight:800}
+.sa{color:#3a4c75;flex:none}
+.eta{font-size:14px;margin:6px 0 2px}
+.eta b{color:var(--acc);font-size:16px}
+.ctl-r{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
+.ctl-r>span{font-size:14px}
+.ctl-r>.sec{flex:1}
+.seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{padding:7px 11px;font-size:13px}
+.seg button.on{background:var(--acc);color:#1b1206;font-weight:800}
+.sw{min-width:56px;padding:7px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--line);font-size:13px}
+.sw.on{background:var(--ok);color:#06210f;font-weight:800;border-color:var(--ok)}
+h3{margin:4px 0 8px;font-size:16px}
+.info li{margin-bottom:8px;line-height:1.55;font-size:14px}
+#frameNote{display:none}
+/* picker */
+#picker{position:fixed;inset:0;z-index:50;background:#060a16;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .25s ease;padding-top:env(safe-area-inset-top)}
+#picker.open{transform:none}
+.pk-top{display:flex;gap:8px;align-items:center;padding:12px}
+.pk-top b{flex:1;font-size:16px}
+#pkSearch{width:calc(100% - 24px);margin:0 12px 8px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--tx);font-size:16px;outline:none}
+#pkList{flex:1;overflow-y:auto;padding:0 12px calc(env(safe-area-inset-bottom) + 20px)}
+.pk-g{font-size:12px;color:var(--acc);margin:14px 4px 6px;font-weight:700}
+.pk-i{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:11px 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);margin-bottom:6px}
+.pk-i>span:first-child{display:flex;flex-direction:column}
+.pk-i b{font-size:16px}
+.empty{padding:30px;text-align:center;color:var(--mut)}
+/* pop sheet */
+#pop{position:fixed;inset:0;z-index:45;background:#0008;display:none;align-items:flex-end}
+#pop.open{display:flex}
+.pop-sheet{position:relative;width:100%;max-height:82vh;overflow-y:auto;background:var(--card);border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:18px 16px calc(env(safe-area-inset-bottom) + 18px);animation:up .22s ease}
+@keyframes up{from{transform:translateY(40%);opacity:.4}}
+.pop-x{position:absolute;right:12px;top:12px;width:32px;height:32px;border-radius:50%;background:var(--card2);font-size:14px}
+.pop-h{display:flex;flex-direction:column;gap:2px;padding-right:40px}
+.pop-h b{font-size:18px}
+.okline{margin-top:8px;color:var(--ok);font-size:14px}
+.sel{background:var(--card2);border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:10px 8px;font-size:14px;width:100%;-webkit-appearance:none;appearance:none}
+.sel.sm{width:auto;padding:6px 8px;font-size:13px;border-radius:9px}
+.star{float:right;font-size:22px;line-height:1;color:var(--mut);padding:0 2px}
+.star.on{color:#ffd34d}
+.sp-h{overflow:hidden}
+.cbox{width:100%;min-height:150px;margin-top:10px;background:#0a1224;color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:13px;line-height:1.5;font-family:inherit}
+/* trip */
+.trip-top{display:flex;gap:8px}
+.mini{width:auto;white-space:nowrap;padding:9px 12px}
+.fld{margin-top:10px;flex:1;min-width:0}
+.fld label{display:block;font-size:12px;color:var(--mut);margin-bottom:4px}
+.fld input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;color:var(--tx);padding:10px 12px;font-size:16px;font-family:inherit;min-height:44px}
+.fld2{display:flex;gap:10px}
+.stepper{display:flex;align-items:center;justify-content:space-between;background:var(--card2);border:1px solid var(--line);border-radius:12px;min-height:44px}
+.stepper button{width:44px;height:42px;font-size:20px}
+.stepper b{font-size:17px}
+.sec.left{text-align:left;padding:11px 12px}
+.cloudline{margin-top:10px;font-size:13px;color:#9fd2ff}
+.hrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.hrow b{font-size:16px}
+.wish{display:flex;flex-direction:column;gap:6px}
+.wi{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 12px;font-size:14px}
+.wi span{flex:1}
+.x{width:30px;height:30px;border-radius:8px;color:var(--mut)}
+.daytabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.daytabs::-webkit-scrollbar{display:none}
+.daytabs .chip{flex:none;display:flex;flex-direction:column;align-items:center;line-height:1.25;position:relative;padding:7px 14px}
+.daytabs .chip small{font-size:11px;color:inherit;opacity:.8}
+.daytabs .chip i{position:absolute;top:-4px;right:-4px;font-style:normal;background:var(--ok);color:#06210f;font-size:10px;font-weight:800;border-radius:9px;min-width:17px;height:17px;display:grid;place-items:center}
+.tm{font-size:13px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.tm input{background:var(--card2);border:1px solid var(--line);border-radius:9px;color:var(--tx);padding:5px 6px;font-size:15px;font-family:inherit}
+.tl2{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.stop{display:flex;gap:10px;align-items:flex-start;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:10px}
+.stop .num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--acc);color:#1b1206;font-weight:900;display:grid;place-items:center;font-size:14px}
+.stop .num.start{background:var(--ok)}.stop .num.end{background:var(--bad);color:#fff}
+.stop.se{background:transparent}
+.sb{flex:1;min-width:0}
+.sb b{font-size:15px}
+.sctl{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.sctl button,.sctl select{background:var(--card);border:1px solid var(--line);border-radius:9px;color:var(--tx);height:32px;min-width:32px;padding:0 7px;font-size:13px;font-family:inherit;-webkit-appearance:none;appearance:none}
+.leg{display:flex;align-items:center;gap:8px;width:100%;text-align:left;margin-left:14px;width:calc(100% - 14px);padding:8px 10px;border-left:3px dashed #3a4c75;font-size:13px;color:#cfe0ff}
+.leg .lt{flex:1;display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.leg .chev{color:var(--mut)}
+.leg.same,.leg.none{color:var(--mut)}
+.card>.leg{margin:6px 0 0;width:100%;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+.legd{margin:0 0 4px 14px;padding:10px;border-radius:12px;background:#0a1224;border:1px solid var(--line)}
+.sc{font-size:14px;line-height:1.5;margin-bottom:6px}
+.sumline{margin-top:10px;font-size:14px;line-height:1.6}
+.sumline b{color:var(--acc)}
+.warnc{color:#ffb08a}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translate(-50%,30px);opacity:0;transition:.25s;background:#1d2b4f;border:1px solid #3a4f7a;color:#fff;padding:11px 16px;border-radius:14px;font-size:14px;z-index:60;max-width:88vw;line-height:1.5;pointer-events:none}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="c3d"></canvas>
+    <div id="topbar">
+      <button class="title" id="cityBtn"><span id="cityTitle">🚃 電車 3D 導航</span> <i>▾</i><small id="citySub"></small></button>
+      <button class="fab" id="btnFit" title="重設視角">🎯</button>
+      <button class="fab" id="btnBig" title="放大 3D">⤢</button>
+    </div>
+    <div id="miniHud"></div>
+  </div>
+  <nav id="tabs">
+    <button data-t="plan" class="on">🧭 路線</button>
+    <button data-t="spots">📍 景點</button>
+    <button data-t="trip">🗓️ 行程</button>
+    <button data-t="ride">🚃 乘車</button>
+    <button data-t="info">⚙️ 設定</button>
+  </nav>
+  <main id="panel">
+    <section class="tab on" id="tab-plan">
+      <div class="card">
+        <div class="od">
+          <button class="stbtn" id="btnFrom"><span class="lbl">出發</span><span class="val" id="fromVal"></span></button>
+          <button id="swap" aria-label="對調">⇅</button>
+          <button class="stbtn" id="btnTo"><span class="lbl">目的地</span><span class="val" id="toVal"></span></button>
+        </div>
+        <div class="row"><button class="sec" id="btnHome">🏨 設定住宿車站</button><button class="sec" id="btnNear" style="flex:.6">📍 附近車站</button></div>
+        <div class="chips" id="nearList"></div>
+        <label class="chk"><input type="checkbox" id="fewer"> 少轉乘優先（多花一點時間也沒關係）</label>
+        <div class="row"><button class="primary" id="btnPlan">規劃路線</button></div>
+      </div>
+      <div id="result"></div>
+    </section>
+    <section class="tab" id="tab-spots">
+      <div class="chips" id="spotChips" style="margin:0 0 12px"></div>
+      <div id="spotList"></div>
+    </section>
+    <section class="tab" id="tab-trip"><div id="tripBox"></div></section>
+    <section class="tab" id="tab-ride"><div id="rideBox"></div></section>
+    <section class="tab" id="tab-info">
+      <div class="card">
+        <h3>🏨 住宿車站</h3>
+        <div style="display:flex;align-items:center;gap:8px"><div id="homeVal" style="flex:1"></div><button class="sec" id="btnSetHome" style="width:auto;padding:9px 14px">變更</button></div>
+      </div>
+      <div class="card">
+        <h3>📡 定位</h3>
+        <div class="note" id="frameNote">⚠️ 目前是內嵌在 Claude 中開啟，定位會被封鎖。乘車導航仍可用時間推算＋手動「到站」校正。想用 GPS，請把這份 HTML 放到 GitHub Pages 等 HTTPS 網址，用手機 Safari／Chrome 開啟（可「加入主畫面」當 App 用）。</div>
+        <div class="row"><button class="sec" id="btnGpsTest">測試定位／找附近車站</button></div>
+      </div>
+      <div class="card info">
+        <h3 id="tipsTitle">🧳 搭車小提醒</h3>
+        <ul style="padding-left:18px;margin:0" id="cityTips"></ul>
+      </div>
+      <p class="note">行車時間為一般班次的估算（含平均候車），並非即時時刻表；車站與路網為主要觀光路線的簡化版，座標為概略位置。實際出發前可用 Google 地圖確認即時班次。</p>
+    </section>
+  </main>
+</div>
+<div id="picker">
+  <div class="pk-top"><b id="pkTitle">選擇車站</b><button class="sec" id="pkClose" style="width:auto;padding:8px 14px">關閉</button></div>
+  <input id="pkSearch" type="search" placeholder="搜尋：難波 / なんば / Namba / USJ" autocomplete="off">
+  <div id="pkList"></div>
+</div>
+<div id="pop"><div class="pop-sheet"><button class="pop-x" id="popClose" aria-label="關閉">✕</button><div id="popBody"></div></div></div>
+<div id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>
