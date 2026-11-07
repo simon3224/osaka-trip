@@ -267,7 +267,7 @@ for Lx in out_lines: Lx.pop('_cfg', None)
 
 # 景點
 SP = [
-    ('淺草寺・雷門', '東京', '浅草', 35.7148, 139.7967, '雷門出口', 5, 1.5, '浅草寺 雷門', '東京最古老寺院，仲見世通吃人形燒，晚上點燈也很美。'),
+    ('淺草寺・雷門', '東京', '浅草', 35.7125, 139.7965, '雷門出口', 5, 1.5, '浅草寺 雷門', '東京最古老寺院，仲見世通吃人形燒，晚上點燈也很美。'),
     ('東京晴空塔', '東京', '押上', 35.7101, 139.8107, 'B3出口', 3, 2, '東京スカイツリー', '634m 展望台，下方是晴空街道購物商場。'),
     ('上野公園・阿美橫丁', '東京', '上野', 35.7146, 139.7732, '公園口', 3, 2.5, 'アメ横商店街', '博物館、動物園與熱鬧的阿美橫丁市場。'),
     ('秋葉原電器街', '東京', '秋葉原', 35.6984, 139.7731, '電気街口', 2, 2.5, '秋葉原電気街', '動漫、模型、遊戲、電子零件，女僕咖啡。'),
@@ -311,7 +311,8 @@ spots = []
 for n, a, st, y, x, ex, w, h, q, d in SP:
     c = [sid for sid, v in stations.items() if st in v[4].split(' ') or st == v[0] or st in v[0].split('・')]
     if not c: raise SystemExit('spot station missing: ' + st)
-    c.sort(key=lambda s: dist((stations[s][2], stations[s][3]), (y, x)))
+    nl = collections.Counter(st_[0] for Lx in out_lines for st_ in Lx['stops'])
+    c.sort(key=lambda s: dist((stations[s][2], stations[s][3]), (y, x)) - 0.08 * min(nl[s], 4))
     spots.append({'n': n, 'h': h, 'y': y, 'x': x, 'a': a, 'st': c[0], 'ex': ex, 'w': w, 'q': q, 'd': d})
 
 EN = {'東京': 'Tokyo', '新宿': 'Shinjuku', '渋谷': 'Shibuya', '池袋': 'Ikebukuro', '上野': 'Ueno', '浅草': 'Asakusa', '品川': 'Shinagawa',

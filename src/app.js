@@ -41,7 +41,7 @@ function pointInPoly(lat, lon, poly){
 function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 
 // 站名貼圖延遲建立（東京有近 800 站，全部預先建立會吃光手機記憶體）
-const LFONT = `700 40px -apple-system,"PingFang TC","Hiragino Sans","Noto Sans TC","Noto Sans JP",sans-serif`;
+const LFONT = `700 40px -apple-system,"PingFang TC","Hiragino Sans","Noto Sans TC","Noto Sans JP","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
 const _mctx = document.createElement('canvas').getContext('2d');
 let texCount = 0;
 function makeLabel(text, color='#ffffff', strong=false){
@@ -288,19 +288,35 @@ function buildRoute3D(route, opt={}){
 // ====== 景點標記、點選、路線亮顯 ======
 const spotMarks = [];   // {i, pos, mesh, label}
 let hlLine = null;
+// 景點圖示：圓形徽章＋emoji，外圈顏色代表狀態（橘＝一般、金＝想去、綠＝已排入）
+const EFONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+function drawSpotIcon(sm, ring){
+  const c = sm.canvas, ctx = c.getContext('2d'), S = c.width;
+  ctx.clearRect(0, 0, S, S);
+  ctx.beginPath(); ctx.arc(S/2, S/2 - 6, S/2 - 14, 0, Math.PI*2);
+  ctx.fillStyle = '#0b1428'; ctx.fill();
+  ctx.lineWidth = 9; ctx.strokeStyle = ring; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(S/2 - 13, S - 26); ctx.lineTo(S/2 + 13, S - 26); ctx.lineTo(S/2, S - 4); ctx.closePath(); ctx.fillStyle = ring; ctx.fill();
+  ctx.font = `64px ${EFONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(SPOTS[sm.i].i || '📍', S/2, S/2 - 2);
+  sm.tex.needsUpdate = true;
+}
 function buildSpotMarkers(){
-  const geo = new THREE.OctahedronGeometry(0.06, 0);
   const pole = new THREE.CylinderGeometry(0.008, 0.008, 0.26, 6); pole.translate(0, 0.13, 0);
-  const poleMat = new THREE.MeshBasicMaterial({color:0xffb547, transparent:true, opacity:0.6});
+  const poleMat = new THREE.MeshBasicMaterial({color:0xffb547, transparent:true, opacity:0.5});
   SPOTS.forEach((sp, i) => {
-    const pos = P(sp.y, sp.x, 0.32);
-    const mat = new THREE.MeshStandardMaterial({color:0xffb547, emissive:0xff8a3d, emissiveIntensity:0.6});
-    const m = new THREE.Mesh(geo, mat); m.position.copy(pos); scene.add(m);
+    const pos = P(sp.y, sp.x, 0.3);
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+    const tex = new THREE.CanvasTexture(canvas); tex.minFilter = THREE.LinearFilter;
+    const icon = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false, transparent:true}));
+    icon.center.set(0.5, 0.05); icon.position.copy(pos); icon.renderOrder = 25; scene.add(icon);
     const p = new THREE.Mesh(pole, poleMat); p.position.set(pos.x, 0, pos.z); scene.add(p);
-    const lb = makeLabel(sp.n, '#c98a2c'); lb.position.copy(pos); lb.userData.base = 0.36;
+    const lb = makeLabel(sp.n, '#c98a2c'); lb.position.copy(pos); lb.userData.base = 0.3;
     lb.userData.net = true; lb.userData.spot = i; lb.userData.px = 13; lb.userData.pri = 1.5;
     scene.add(lb); labels.push(lb);
-    spotMarks.push({i, pos, mesh:m, label:lb});
+    const sm = {i, pos, icon, canvas, tex, label:lb, px:30};
+    drawSpotIcon(sm, '#ffb547');
+    spotMarks.push(sm);
   });
 }
 function refreshSpotMarkers(){
@@ -309,9 +325,8 @@ function refreshSpotMarkers(){
   const planned = new Set(t ? t.days.flatMap(d => d.stops.filter(s => s.s).map(s => s.s)) : []);
   for (const sm of spotMarks){
     const n = SPOTS[sm.i].n, w = wish.has(n), p = planned.has(n);
-    sm.mesh.material.color.set(p ? 0x3ddc97 : w ? 0xffd34d : 0xffb547);
-    sm.mesh.material.emissive.set(p ? 0x1d9a64 : w ? 0xffb000 : 0xff8a3d);
-    sm.mesh.scale.setScalar(p || w ? 1.5 : 1);
+    drawSpotIcon(sm, p ? '#3ddc97' : w ? '#ffd34d' : '#ffb547');
+    sm.px = p || w ? 38 : 30;
     sm.label.userData.pri = p || w ? 2.5 : 1.5;
   }
 }
@@ -333,7 +348,7 @@ function handleTap(cx, cy){
   const x = cx - rc.left, y = cy - rc.top, W = rc.width, H = rc.height;
   const scr = v => { _v.copy(v).project(camera); return _v.z < 1 ? [(_v.x+1)/2*W, (1-_v.y)/2*H] : null; };
   let best = null;
-  for (const sm of spotMarks){ const s = scr(sm.pos); if (!s) continue; const d = Math.hypot(s[0]-x, s[1]-y); if (d < 30 && (!best || d < best.d)) best = {d, spot:sm.i}; }
+  for (const sm of spotMarks){ const s = scr(sm.pos.clone().setY(sm.pos.y + (sm.iw || 0)*0.5)); if (!s) continue; const d = Math.hypot(s[0]-x, s[1]-y); if (d < 30 && (!best || d < best.d)) best = {d, spot:sm.i}; }
   if (!best){
     for (const id in ST){ const s = scr(P(ST[id][2], ST[id][3], 0.05)); if (!s) continue; const d = Math.hypot(s[0]-x, s[1]-y); if (d < 24 && (!best || d < best.d)) best = {d, st:id}; }
     for (const l of labels){ if (!l.visible || !l.userData.st) continue; const s = scr(l.position); if (!s) continue; const w = l.userData.px*l.userData.asp/2 + 4, h = l.userData.px/2 + 4;
@@ -353,7 +368,7 @@ function dayOptions(){
 function showSpotPop(i){
   const sp = SPOTS[i], t = curTrip(), w = t.wish.includes(sp.n);
   const inDay = t.days.findIndex(d => d.stops.some(s => s.s === sp.n));
-  openPop(`<div class="pop-h"><b>${esc(sp.n)}</b><span class="mut">${esc(sp.a)} · 建議停留 ${sp.h} 小時</span></div>
+  openPop(`<div class="pop-h"><b><span class="ico">${sp.i}</span>${esc(sp.n)}</b><span class="mut">${esc(sp.a)} · 建議停留 ${sp.h} 小時</span></div>
     <div class="mut" style="margin-top:6px">${esc(sp.d)}</div>
     <div class="sp-st">🚉 <b>${esc(ST[sp.st][0])}</b>站 ${sp.ex ? '· '+esc(sp.ex) : ''} · 步行約 ${sp.w} 分 <span class="bl">${(SERVE[sp.st]||[]).map(l=>badge(LMAP[l])).join('')}</span></div>
     ${inDay >= 0 ? `<div class="okline">✅ 已排在第 ${inDay+1} 天</div>` : ''}
@@ -488,11 +503,15 @@ function loop(now){
   if (userDot.visible) userDot.children[0].position.y = 0.12 + Math.sin(t*3)*0.02;
   const cw = renderer.domElement.clientWidth || 300, ch = renderer.domElement.clientHeight || 300;
   const tanF = 2*Math.tan(camera.fov*Math.PI/360);
+  for (const sm of spotMarks){
+    const d = camera.position.distanceTo(sm.pos);
+    const s = sm.px / ch * d * tanF; sm.icon.scale.set(s, s, 1); sm.iw = s;
+  }
   for (const sp of labels){
     const d = camera.position.distanceTo(sp.position);
     const hw = sp.userData.px / ch * d * tanF;     // 讓字在螢幕上固定 px 大小
     sp.scale.set(hw*sp.userData.asp, hw, 1);
-    sp.position.y = sp.userData.base + hw*0.6;
+    sp.position.y = sp.userData.base + hw*0.6 + (sp.userData.spot != null && spotMarks[sp.userData.spot] ? (spotMarks[sp.userData.spot].iw || 0)*0.98 : 0);
   }
   if (frameCount % 4 === 0) declutter(cw, ch);
   if (++frameCount % 30 === 0 && ride.active) renderRideHud(true);
@@ -771,7 +790,7 @@ function renderResult(r){
   $('#btnRide').onclick = () => startRide(curRoute);
 }
 function spotExitCard(sp){
-  return `<div class="card exit"><div>📍 出站後前往 <b>${esc(sp.n)}</b></div>
+  return `<div class="card exit"><div>📍 出站後前往 <b>${sp.i || ""} ${esc(sp.n)}</b></div>
    <div class="mut">${esc(ST[sp.st][0])}${sp.ex ? ' · '+esc(sp.ex) : ''} · 步行約 ${sp.w} 分</div>
    <a class="ext" href="${gmapsWalk(sp)}" target="_blank" rel="noopener">步行路線（Google 地圖）↗</a></div>`;
 }
@@ -783,7 +802,7 @@ function renderSpots(){
   $('#spotChips').innerHTML = areas.map(a => `<button class="chip ${a===spotArea?'on':''}" data-a="${a}">${a}</button>`).join('');
   $('#spotList').innerHTML = SPOTS.map((sp,i) => ({sp,i})).filter(x => x.sp.a === spotArea).map(({sp,i}) => `
     <div class="card spot">
-      <div class="sp-h"><b>${esc(sp.n)}</b><button class="star ${curTrip().wish.includes(sp.n)?'on':''}" data-star="${i}">${curTrip().wish.includes(sp.n)?'★':'☆'}</button></div>
+      <div class="sp-h"><b><span class="ico">${sp.i}</span>${esc(sp.n)}</b><button class="star ${curTrip().wish.includes(sp.n)?'on':''}" data-star="${i}">${curTrip().wish.includes(sp.n)?'★':'☆'}</button></div>
       <div class="mut">${esc(sp.d)}</div>
       <div class="sp-st">🚉 <b>${esc(ST[sp.st][0])}</b>站 ${sp.ex ? '· '+esc(sp.ex) : ''} · 步行約 ${sp.w} 分 <span class="bl">${(SERVE[sp.st]||[]).map(l=>badge(LMAP[l])).join('')}</span></div>
       <div class="row">

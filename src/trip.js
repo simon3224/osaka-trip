@@ -22,7 +22,8 @@ function dayDateLabel(t, k){
   d.setDate(d.getDate()+k); return `${d.getMonth()+1}/${d.getDate()}(${WD[d.getDay()]})`;
 }
 const stopSt = s => s.s != null ? (SPOT_BY[s.s] != null ? SPOTS[SPOT_BY[s.s]].st : null) : s.st;
-const stopName = s => s.s != null ? s.s : (ST[s.st] ? ST[s.st][0] + '站' : '?');
+const spIcon = n => SPOT_BY[n] != null ? (SPOTS[SPOT_BY[n]].i || '') : '';
+const stopName = s => s.s != null ? (spIcon(s.s) + ' ' + s.s) : (ST[s.st] ? '🚉 ' + ST[s.st][0] + '站' : '?');
 const stopHours = s => s.h != null ? s.h : (s.s != null && SPOT_BY[s.s] != null ? SPOTS[SPOT_BY[s.s]].h : 1);
 const dayStart = (t, d) => d.from || t.home;
 const dayEnd = (t, d) => d.end === 'none' ? null : (d.end === 'home' || !d.end) ? t.home : d.end;
@@ -198,7 +199,7 @@ function autoArrange(t){
 // ---- 3D ----
 function dayMarks(t, P){
   return P.items.map((it,i) => {
-    if (it.s.s != null){ const sp = SPOTS[SPOT_BY[it.s.s]]; return {y:sp.y, x:sp.x, label:`${i+1} ${sp.n}`}; }
+    if (it.s.s != null){ const sp = SPOTS[SPOT_BY[it.s.s]]; return {y:sp.y, x:sp.x, label:`${i+1} ${sp.i} ${sp.n}`}; }
     return {y:ST[it.st][2], x:ST[it.st][3], label:`${i+1} ${ST[it.st][0]}`};
   });
 }
@@ -284,7 +285,7 @@ function renderTrip(){
   </div>`;
   h += `<div class="card"><div class="hrow"><b>⭐ 想去清單</b><span class="mut">${t.wish.length} 個尚未排入</span></div>`;
   h += t.wish.length
-    ? `<div class="wish">${t.wish.map((n,i) => `<div class="wi"><span>${esc(n)}</span><select class="sel sm" data-wday="${i}"><option value="">排入…</option>${t.days.map((x,k) => `<option value="${k}">第${k+1}天</option>`).join('')}</select><button class="x" data-wdel="${i}" aria-label="移除">✕</button></div>`).join('')}</div>`
+    ? `<div class="wish">${t.wish.map((n,i) => `<div class="wi"><span>${spIcon(n)} ${esc(n)}</span><select class="sel sm" data-wday="${i}"><option value="">排入…</option>${t.days.map((x,k) => `<option value="${k}">第${k+1}天</option>`).join('')}</select><button class="x" data-wdel="${i}" aria-label="移除">✕</button></div>`).join('')}</div>`
     : `<div class="mut">在「景點」頁或 3D 地圖點景點，按 ☆ 加入想去。</div>`;
   h += `<div class="row"><button class="primary" id="autoArr">🪄 自動排入各天</button></div>
     <div class="note">依區域與距離分天（京都、奈良、神戶各自一天，USJ 單獨一天），每天再排出最省交通時間的順序。會重新安排所有景點，你手動加的車站會保留。</div></div>`;
@@ -395,7 +396,7 @@ function renderSpotPicker(q){
     if (!list.length) continue;
     h += `<div class="pk-g">${a}</div>` + list.map(s => {
       const dd = spotDayOf(s.n);
-      return `<button class="pk-i" data-spot="${esc(s.n)}"><span><b>${wish.has(s.n) ? '⭐ ' : ''}${esc(s.n)}</b><small>${esc(ST[s.st][0])}站 · 停留約 ${s.h}h${dd >= 0 ? ' · 已在第' + (dd+1) + '天' : ''}</small></span></button>`;
+      return `<button class="pk-i" data-spot="${esc(s.n)}"><span><b>${s.i} ${esc(s.n)}${wish.has(s.n) ? ' ⭐' : ''}</b><small>${esc(ST[s.st][0])}站 · 停留約 ${s.h}h${dd >= 0 ? ' · 已在第' + (dd+1) + '天' : ''}</small></span></button>`;
     }).join('');
   }
   $('#pkList').innerHTML = h || '<div class="empty">找不到景點</div>';
