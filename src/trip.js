@@ -199,7 +199,7 @@ function autoArrange(t){
 // ---- 3D ----
 function dayMarks(t, P){
   return P.items.map((it,i) => {
-    if (it.s.s != null){ const sp = SPOTS[SPOT_BY[it.s.s]]; return {y:sp.y, x:sp.x, label:`${i+1} ${sp.i} ${sp.n}`}; }
+    if (it.s.s != null){ const k = SPOT_BY[it.s.s], sp = SPOTS[k]; return {y:sp.y, x:sp.x, label:`${i+1} ${sp.i} ${sp.n}`, top:(spotMarks[k] && spotMarks[k].top) || 0}; }
     return {y:ST[it.st][2], x:ST[it.st][3], label:`${i+1} ${ST[it.st][0]}`};
   });
 }

@@ -129,6 +129,7 @@ function buildCity(){
       const x = c.x + Math.cos(a)*r, z = c.z + Math.sin(a)*r;
       const lat = LAT0 - z/KZ, lon = LON0 + x/KX;
       if (pointInPoly(lat, lon, BAY)) continue;
+      if (SPOTS.some(sp => Math.abs(sp.y - lat) < 0.0022 && Math.abs(sp.x - lon) < 0.0026)) continue;
       const hgt = hub ? (0.03 + Math.pow(rnd(),2.2)*0.38) : (0.015 + rnd()*0.09);
       items.push([x, z, 0.04+rnd()*0.1, hgt, 0.04+rnd()*0.1, rnd()]);
     }
@@ -277,7 +278,7 @@ function buildRoute3D(route, opt={}){
   }
   if (opt.home){ const h = P(ST[opt.home][2], ST[opt.home][3], 0.05); const p = makePin(0x3ddc97); p.position.copy(h); routeGroup.add(p); pins.push(p); all.push(h); }
   for (const m of (opt.marks || [])){
-    const v = P(m.y, m.x, 0.05);
+    const v = P(m.y, m.x, 0.05 + (m.top || 0));
     const pin = makePin(0xffb547); pin.position.copy(v); routeGroup.add(pin); pins.push(pin);
     const lb = makeLabel(m.label, '#ffb547', true); lb.position.copy(v); lb.userData.base = 0.42; lb.userData.pri = 6; lb.userData.px = 17;
     routeGroup.add(lb); labels.push(lb); all.push(v);
@@ -286,7 +287,8 @@ function buildRoute3D(route, opt={}){
 }
 
 // ====== 景點標記、點選、路線亮顯 ======
-const spotMarks = [];   // {i, pos, mesh, label}
+const spotMarks = [];   // {i, pos, icon, model, label}
+const landmarkAnims = [];
 let hlLine = null;
 // 景點圖示：圓形徽章＋emoji，外圈顏色代表狀態（橘＝一般、金＝想去、綠＝已排入）
 const EFONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
@@ -310,11 +312,16 @@ function buildSpotMarkers(){
     const tex = new THREE.CanvasTexture(canvas); tex.minFilter = THREE.LinearFilter;
     const icon = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, depthTest:false, transparent:true}));
     icon.center.set(0.5, 0.05); icon.position.copy(pos); icon.renderOrder = 25; scene.add(icon);
-    const p = new THREE.Mesh(pole, poleMat); p.position.set(pos.x, 0, pos.z); scene.add(p);
     const lb = makeLabel(sp.n, '#c98a2c'); lb.position.copy(pos); lb.userData.base = 0.3;
     lb.userData.net = true; lb.userData.spot = i; lb.userData.px = 13; lb.userData.pri = 1.5;
     scene.add(lb); labels.push(lb);
     const sm = {i, pos, icon, canvas, tex, label:lb, px:30};
+    // 3D 地標模型
+    const model = buildLandmark(sp);
+    model.position.copy(P(sp.y, sp.x, 0.012)); model.rotation.y = (sp.ry != null ? sp.ry : 0);
+    scene.add(model); sm.model = model; sm.top = model.userData.top;
+    model.traverse(o => { if (o.userData && o.userData.anim) landmarkAnims.push(o); });
+    pos.y = sm.top + 0.06; icon.position.copy(pos); lb.position.copy(pos); lb.userData.base = pos.y;
     drawSpotIcon(sm, '#ffb547');
     spotMarks.push(sm);
   });
@@ -348,7 +355,7 @@ function handleTap(cx, cy){
   const x = cx - rc.left, y = cy - rc.top, W = rc.width, H = rc.height;
   const scr = v => { _v.copy(v).project(camera); return _v.z < 1 ? [(_v.x+1)/2*W, (1-_v.y)/2*H] : null; };
   let best = null;
-  for (const sm of spotMarks){ const s = scr(sm.pos.clone().setY(sm.pos.y + (sm.iw || 0)*0.5)); if (!s) continue; const d = Math.hypot(s[0]-x, s[1]-y); if (d < 30 && (!best || d < best.d)) best = {d, spot:sm.i}; }
+  for (const sm of spotMarks){ const s = scr(sm.icon.visible && sm.icon.material.opacity > .6 ? sm.pos.clone().setY(sm.pos.y + (sm.iw || 0)*0.5) : sm.pos.clone().setY(sm.top*0.5)); if (!s) continue; const d = Math.hypot(s[0]-x, s[1]-y); if (d < Math.max(30, sm.top / ((camera.position.distanceTo(sm.pos) || 1) * 2*Math.tan(camera.fov*Math.PI/360)) * H * 0.6) && (!best || d < best.d)) best = {d, spot:sm.i}; }
   if (!best){
     for (const id in ST){ const s = scr(P(ST[id][2], ST[id][3], 0.05)); if (!s) continue; const d = Math.hypot(s[0]-x, s[1]-y); if (d < 24 && (!best || d < best.d)) best = {d, st:id}; }
     for (const l of labels){ if (!l.visible || !l.userData.st) continue; const s = scr(l.position); if (!s) continue; const w = l.userData.px*l.userData.asp/2 + 4, h = l.userData.px/2 + 4;
@@ -505,8 +512,12 @@ function loop(now){
   const tanF = 2*Math.tan(camera.fov*Math.PI/360);
   for (const sm of spotMarks){
     const d = camera.position.distanceTo(sm.pos);
-    const s = sm.px / ch * d * tanF; sm.icon.scale.set(s, s, 1); sm.iw = s;
+    const near = d < 1.3 + sm.top*2;   // 拉近時看模型就好，圖示縮小淡出
+    const k = near ? clamp((d - 0.6) / (0.7 + sm.top*2), 0, 1) : 1;
+    const s = sm.px * (0.45 + 0.55*k) / ch * d * tanF; sm.icon.scale.set(s, s, 1); sm.iw = s;
+    sm.icon.material.opacity = 0.25 + 0.75*k; sm.icon.visible = k > 0.02;
   }
+  for (const o of landmarkAnims) o.userData.anim(o, t);
   for (const sp of labels){
     const d = camera.position.distanceTo(sp.position);
     const hw = sp.userData.px / ch * d * tanF;     // 讓字在螢幕上固定 px 大小
