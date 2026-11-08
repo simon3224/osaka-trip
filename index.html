@@ -1206,6 +1206,23 @@ const LAT0 = CITY.lat0, LON0 = CITY.lon0, KZ = 111.0, KX = 111.32*Math.cos(LAT0*
 const P = (lat, lon, y=0) => new THREE.Vector3((lon-LON0)*KX, y, -(lat-LAT0)*KZ);
 let renderer, scene, camera, clock, routeGroup, train, userDot;
 const lineMeshes = [];
+const netSegs = [];   // 路網線段（判斷藍點是否在軌道上）
+function segDist(px, pz, ax, az, bx, bz){
+  const dx = bx-ax, dz = bz-az, L2 = dx*dx + dz*dz;
+  const t = L2 ? clamp(((px-ax)*dx + (pz-az)*dz) / L2, 0, 1) : 0;
+  return Math.hypot(px - (ax + t*dx), pz - (az + t*dz));
+}
+function distToTrack(p){
+  let best = Infinity;
+  if (segs3D.length){ for (const S of segs3D) for (const q of S.samples){ const d = Math.hypot(q.x-p.x, q.z-p.z); if (d < best) best = d; } }
+  for (const s of netSegs){ const d = segDist(p.x, p.z, s[0], s[1], s[2], s[3]); if (d < best) best = d; }
+  return best;
+}
+// 在軌道附近（含 GPS 誤差）就隱藏藍點，由列車代表你的位置
+function updateUserDot(acc){
+  const tol = Math.max(0.12, Math.min((acc || 0)/1000, 0.3));
+  userDot.visible = distToTrack(userDot.position) > tol;
+}
 const labels = [];          // 需要依距離縮放的 sprite
 const flows = [];           // 路線上流動的光點
 const pins = [];
@@ -1343,6 +1360,8 @@ function buildNetwork(){
     const mat = new THREE.MeshBasicMaterial({color:L.color, transparent:true, opacity:0.55});
     const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, pts.length*14, 0.032, 5, !!L.loop), mat);
     mesh.userData.lid = L.id; lineMeshes.push(mesh); scene.add(mesh);
+    const vs = lineVecs(L, 0); if (L.loop) vs.push(vs[0]);
+    for (let i=1;i<vs.length;i++) netSegs.push([vs[i-1].x, vs[i-1].z, vs[i].x, vs[i].z]);
   }
   const ids = Object.keys(ST);
   const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.055,0.055,0.05,14), new THREE.MeshBasicMaterial({color:0xdfe7ff}), ids.length);
@@ -1364,7 +1383,7 @@ function makeTrain(){
   const bodyGeo = new THREE.BoxGeometry(0.1, 0.075, 0.3);
   const bodyMat = new THREE.MeshStandardMaterial({color:0xf3f6fb, roughness:0.35, metalness:0.25, emissive:0x1d2433});
   const winMat = new THREE.MeshBasicMaterial({color:0xaee3ff});
-  for (let i=0;i<3;i++){
+  for (let i=0;i<1;i++){   // 只放一節車廂，中心＝你的位置
     const car = new THREE.Group();
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.104, 0.03, 0.302), g.stripeMat); stripe.position.y = -0.02;
@@ -1777,9 +1796,8 @@ function placeTrain(dt){
   const u = rideU();
   if (ride.dispSi !== ride.si){ ride.dispSi = ride.si; ride.dispU = u; }
   else ride.dispU += (u - ride.dispU) * Math.min(1, (dt||0)*4);
-  const g = 0.31 / S.len;
-  train.cars.forEach((car, i) => {
-    const uu = clamp(ride.dispU - i*g, 0, 1);
+  train.cars.forEach(car => {
+    const uu = clamp(ride.dispU, 0, 1);
     const p = S.curve.getPointAt(uu), t = S.curve.getTangentAt(uu);
     car.position.set(p.x, 0.135, p.z);
     car.lookAt(p.x + t.x, 0.135, p.z + t.z);
@@ -1842,7 +1860,7 @@ function onFix(pos){
   const {latitude:la, longitude:lo, accuracy:acc} = pos.coords;
   ride.lastFix = {la, lo, acc, t:Date.now()};
   ride.gpsStatus = `訊號 ±${Math.round(acc)}m`;
-  userDot.position.copy(P(la, lo)); userDot.visible = true;
+  userDot.position.copy(P(la, lo)); updateUserDot(acc);
   const r = clamp(acc/1000, 0.03, 2); userDot.ring.scale.set(r, r, r);
   if (ride.active && acc < 300) snapToRoute(la, lo);
   renderRide();
@@ -2111,7 +2129,7 @@ function findNear(){
   navigator.geolocation.getCurrentPosition(pos => {
     const near = nearestStations(pos.coords.latitude, pos.coords.longitude, 4);
     $('#nearList').innerHTML = near.map(([id,d]) => `<button class="chip" data-near="${id}">${esc(ST[id][0])} <small>${d<1?Math.round(d*1000)+'m':d.toFixed(1)+'km'}</small></button>`).join('');
-    userDot.position.copy(P(pos.coords.latitude, pos.coords.longitude)); userDot.visible = true;
+    userDot.position.copy(P(pos.coords.latitude, pos.coords.longitude)); updateUserDot(pos.coords.accuracy);
   }, e => toast(e.code === 1 ? GPS_BLOCK_MSG : '無法取得位置，請稍後再試', 7000), {enableHighAccuracy:true, timeout:15000});
 }
 
