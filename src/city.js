@@ -1,5 +1,5 @@
 // ====== 目前城市 ======
-const CITY_IDS = ['osaka', 'tokyo', 'taipei'];
+const CITY_IDS = ['osaka', 'tokyo', 'taipei', 'taichung'];
 const CITY_ID = (() => {
   const h = (location.hash || '').slice(1);
   if (CITY_IDS.includes(h)) return h;
@@ -17,10 +17,11 @@ function normQ(s){ let o = ''; for (const ch of String(s).toLowerCase()) o += (V
 function areaOf(lat, lon){
   if (CITY_ID === 'osaka'){ if (lat > 34.9) return '京都'; if (lat < 34.5) return '關西機場'; if (lon > 135.65) return '奈良'; if (lon < 135.3) return '神戶'; return '大阪'; }
   if (CITY_ID === 'tokyo'){ if (lat < 35.53) return '神奈川（橫濱・鎌倉）'; if (lon > 140.0 || (lon > 139.92 && lat < 35.75)) return '千葉・成田'; if (lat > 35.82) return '埼玉'; if (lon < 139.56) return '多摩・郊外'; return '東京23區'; }
+  if (CITY_ID === 'taichung'){ if (lat > 24.2) return '豐原・后里'; if (lat < 24.1) return '彰化'; return '台中'; }
   if (lon < 121.39) return '桃園'; if (lat < 25.02 || lon < 121.475 || lat > 25.115) return '新北'; return '台北';
 }
-const AREA_ORDER = {osaka:['大阪','關西機場','京都','奈良','神戶'], tokyo:['東京23區','神奈川（橫濱・鎌倉）','千葉・成田','埼玉','多摩・郊外'], taipei:['台北','新北','桃園']}[CITY_ID];
-const SEARCH_PH = {osaka:'搜尋：難波 / なんば / Namba / USJ', tokyo:'搜尋：新宿 / 澀谷 / 淺草 / Shibuya', taipei:'搜尋：台北車站 / 西門 / 101 / Ximen'}[CITY_ID];
+const AREA_ORDER = {osaka:['大阪','關西機場','京都','奈良','神戶'], tokyo:['東京23區','神奈川（橫濱・鎌倉）','千葉・成田','埼玉','多摩・郊外'], taipei:['台北','新北','桃園'], taichung:['台中','豐原・后里','彰化']}[CITY_ID];
+const SEARCH_PH = {osaka:'搜尋：難波 / なんば / Namba / USJ', tokyo:'搜尋：新宿 / 澀谷 / 淺草 / Shibuya', taipei:'搜尋：台北車站 / 西門 / 101 / Ximen', taichung:'搜尋：台中 / 市政府 / 松竹 / 高鐵'}[CITY_ID];
 const CITY_TIPS = {
   osaka: `<li><b>ICOCA</b> 可刷大阪地鐵、JR、京阪、阪急、阪神、南海、近鐵；iPhone 可在「錢包」加入 ICOCA，不用買實體卡。</li>
     <li>JR「新快速」、阪急「特急」、京阪「特急」、近鐵「快速急行」都<b>不需另外加購車票</b>；JR 特急 Haruka、南海 rapi:t 需要特急券。</li>
@@ -35,6 +36,10 @@ const CITY_TIPS = {
     <li>捷運站內<b>禁止飲食</b>（包含喝水、嚼口香糖），黃線內就算站內，違者會被罰款。</li>
     <li>機場捷運的台北車站在台北車站西側，從捷運台北車站走過去約 10 分鐘；去機場搭<b>紫色直達車</b>。</li>
     <li>中和新蘆線在大橋頭分岔（往迴龍／往蘆洲），淡水信義線北投站、松山新店線七張站有支線，看清楚終點站。</li>`,
+  taichung: `<li>台中捷運目前只有<b>綠線</b>（北屯總站～高鐵台中站）；藍線施工中，預計 2034 年後才通車。</li>
+    <li><b>台中車站不在捷運上</b>：宮原眼科、綠空鐵道、台中公園要搭台鐵，綠線在<b>松竹、大慶</b>站可轉台鐵。</li>
+    <li>高鐵台中站與台鐵新烏日站、捷運高鐵台中站相連，從台北搭高鐵來可直接轉捷運。</li>
+    <li>逢甲夜市、彩虹眷村、高美濕地等捷運沒到，建議轉公車、YouBike 或計程車。刷悠遊卡／一卡通即可搭捷運、台鐵、公車。</li>`,
 }[CITY_ID];
 function switchCity(id){
   if (!CITY_IDS.includes(id) || id === CITY_ID) return;

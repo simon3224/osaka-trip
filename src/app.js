@@ -966,7 +966,7 @@ function initUI(){
   document.title = CITY.title; $('#cityTips').innerHTML = CITY_TIPS; $('#tipsTitle').textContent = `🧳 ${CITY.name}搭車小提醒`;
   $('#pkSearch').placeholder = SEARCH_PH;
   $('#cityBtn').onclick = () => {
-    const info = {osaka:['大阪・京都・奈良・神戶','JR、地鐵、私鐵、USJ、關西機場'], tokyo:['東京・橫濱・鎌倉・成田','地鐵、都營、JR、私鐵、羽田／成田機場'], taipei:['台北・新北・桃園機場','台北捷運 7 線＋機場捷運']};
+    const info = {osaka:['大阪・京都・奈良・神戶','JR、地鐵、私鐵、USJ、關西機場'], tokyo:['東京・橫濱・鎌倉・成田','地鐵、都營、JR、私鐵、羽田／成田機場'], taipei:['台北・新北・桃園機場','台北捷運 7 線＋機場捷運'], taichung:['台中・豐原・彰化','捷運綠線＋台鐵山線、高鐵台中站']};
     openPop(`<div class="pop-h"><b>切換城市</b><span class="mut">每個城市的行程、住宿車站分開保存</span></div><div class="citylist">${CITY_IDS.map(id => `<button data-city="${id}" class="${id===CITY_ID?'on':''}"><span><b>${CITIES[id].name}</b> <span class="mut">${info[id][0]}</span><br><small>${info[id][1]}</small></span><span>${id===CITY_ID?'✓':'›'}</span></button>`).join('')}</div>`);
     $('#popBody').onclick = e => { const b = e.target.closest('[data-city]'); if (b){ if (b.dataset.city === CITY_ID) closePop(); else { toast('切換到' + CITIES[b.dataset.city].name + '…'); switchCity(b.dataset.city); } } };
   };

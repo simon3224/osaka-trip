@@ -425,6 +425,34 @@ const LANDMARK_BUILDERS = {
   '板橋林家花園': b => { pad(b, 20, 16, '#2c3a2c'); water(b, 10, 6, -3, 3); b.box(4, 3, 4, C.red, 5, 0, -3); b.roof(6, 6, 2.4, '#2e2e2e', 5, 3, -3); b.cyl(.2, .3, 3, C.red, -3, 0, 3, {seg:6});
     b.cone(3, 2, '#2e2e2e', -3, 3, 3, {seg:6}); trees(b, 8, 4, 441, 4, 6); return 7; },
   '桃園國際機場': b => airport(b),
+  // 台中
+  '宮原眼科': b => { b.box(16, 7, 10, C.brick, 0, 0, 0); for (let i=-3;i<=3;i++) b.box(1.4, 3, .2, '#ffe7a8', i*2.2, 1.5, 5.05, {glow:true});
+    b.box(16.4, 1, 10.4, '#e9dcc0', 0, 7, 0); b.lathe([[3,0],[3,1],[0,3]], '#5b6b6e', 5, 8, 0, {seg:8});
+    b.cone(1.6, 3, '#f7e3c0', -4, 8, 6, {seg:10}); b.sph(1.6, '#ff9db5', -4, 11.6, 6); b.sph(1.2, '#fff3d6', -4, 13.2, 6); return 15; },
+  '綠空鐵道・台中驛': b => { b.box(18, 6, 7, C.brick, 0, 0, -6); b.box(18.2, .6, 7.2, C.cream, 0, 3, -6); b.box(5, 4, 5, C.brick, 0, 6, -6); b.roof(6.5, 6.5, 3, '#4b5a64', 0, 10, -6);
+    b.cyl(.9,.9,.3,C.white,0,8,-3.4,{rx:Math.PI/2}); for (let i=-7;i<=7;i++) b.box(.6, 5, .6, C.steel, i*2.2, 0, 5);
+    b.box(32, .8, 4, '#6b7b6b', 0, 5, 5); for (let i=-7;i<=7;i++) tree(b, i*2.2, 5.2, 2.6); return 13; },
+  '台中公園（湖心亭）': b => { park(b, 501, false); water(b, 16, 10, 0, 0); for (const x of [-2.6, 2.6]){ b.box(4, 2.6, 4, C.white, x, 1, 0); b.roof(5.5, 5.5, 3, '#b8653a', x, 3.6, 0); }
+    b.box(10, .8, 4, '#d9cfc0', 0, .3, 0); for (let i=0;i<3;i++){ b.box(1.8, .5, .9, ['#f54d3f','#3fa9f5','#ffd23f'][i], -5 + i*4, .3, 4); } return 7; },
+  '第二市場': b => { b.cyl(6, 6, 6, '#d9c4a0', 0, 0, 0, {seg:6}); b.cone(6.8, 3, '#7a4b3a', 0, 6, 0, {seg:6}); b.cyl(1.4, 1.4, 4, '#d9c4a0', 0, 9, 0, {seg:6}); b.cone(1.8, 1.8, '#7a4b3a', 0, 13, 0, {seg:6});
+    stalls(b, 6, 2.4, 511, false, 9); return 15; },
+  '一中街': b => { neonBlock(b, 6, 521, 4); b.cyl(1.2, 1, 3.6, '#f3ddb4', 0, 0, 9, {seg:12}); for (let i=0;i<10;i++) b.sph(.25, '#3a2618', Math.cos(i)*.6, .5 + (i%3)*.3, 9 + Math.sin(i)*.6); b.cyl(.15,.15,2.6,'#ff6b9a',.4,3.4,9,{seg:5}); return 12; },
+  '台中國家歌劇院': b => { b.box(22, 12, 14, '#f4f4f2', 0, 0, 0); for (let i=0;i<5;i++) for (let j=0;j<2;j++) b.sph(2.4, '#1c2638', -8 + i*4, 3 + j*5, 7.1, {seg:10, sz:.3});
+    for (let i=0;i<4;i++) b.sph(.9, '#ffe9b0', -6 + i*4, 5.5, 7.4, {glow:true, sz:.3}); b.box(22, .5, 14, '#5fae64', 0, 12, 0); return 13; },
+  '秋紅谷景觀生態公園': b => { b.box(24, .2, 18, '#244a2c', 0, 0, 0); water(b, 12, 7, 0, 0); b.box(14, .5, 1.6, C.white, 0, 1.4, 0); b.tor(7, .25, C.white, 0, 1.4, 0, {seg:20, sx:1, sy:.25});
+    trees(b, 10, 9, 531, 4, 6); for (const [x,z,h] of [[-14,-12,26],[-6,-14,32],[6,-13,28],[14,-11,22]]) skyscraper(b, 5, h, '#7d90a6', x, z); return 33; },
+  '新光三越・大遠百': b => { b.box(14, 14, 12, '#d7d2c8', -6, 0, 0); b.box(14.2, 1.4, .3, '#ffe36b', -6, 11, 6.05, {glow:true}); skyscraper(b, 9, 20, '#8fa6bb', 8, -2); b.box(9.2,1.2,.3,'#ff6b9a',8,16,2.6,{glow:true}); return 21; },
+  '逢甲夜市': b => { stalls(b, 12, 2.4, 541, true); stalls(b, 8, 2.4, 542, true, 9); neonBlock(b, 4, 543, 6); return 13; },
+  '文心森林公園': b => { park(b, 551, true); b.lathe([[0,0],[5,0],[5.2,1],[4,4],[1.5,6],[0,6.4]], C.white, -5, 0, -3, {seg:16, sx:1, sz:.6}); return 7; },
+  '豐樂雕塑公園': b => { park(b, 561, false); b.tor(2.4, .6, '#e84a3c', -4, 3, 0, {seg:16}); b.box(1, 6, 1, '#3a6fd8', 2, 0, -3, {rz:.3}); b.sph(1.6, '#ffd23f', 4, 1.6, 4); b.cone(1.2, 5, C.steel, -1, 0, 5, {seg:4}); return 7; },
+  '水安宮': b => twTemple(b),
+  '豐原廟東夜市': b => { twTemple(b); stalls(b, 8, 2.4, 571, true, 10); return 12; },
+  '彰化八卦山大佛': b => { mountain(b, 6, 16, '#4f8a45'); const B = '#3a3d42'; b.cyl(5, 5.5, 2, C.stone, 0, 6, 0, {seg:12});
+    b.sph(4, B, 0, 10, 0, {seg:12, sy:.65}); b.sph(3.1, B, 0, 13.2, 0, {seg:12, sy:1.15}); b.sph(1.8, B, 0, 17.2, 0, {seg:10}); b.sph(.8, B, 0, 18.9, 0, {seg:8});
+    b.box(12, .4, 1.2, C.steel, 6, 5, 6, {ry:.6}); return 20; },
+  '高鐵台中站': b => { b.box(26, 6, 10, '#dfe6ec', 0, 0, 0); b.lathe([[0,0],[13,0],[12,3],[0,4]], '#9fb4c8', 0, 6, 0, {seg:4, sz:.45, ry:Math.PI/4});
+    const t = b.sub(0, 2, 9); t.cyl(1, 1, 22, C.white, 0, 0, -11, {rx:Math.PI/2}); t.cone(1, 4, C.white, 0, 0, 11, {rx:Math.PI/2, sy:1}); t.box(2.05, .4, 22, '#ff8a2c', 0, -.3, 0);
+    t.anim = (g, tt) => { g.position.x = Math.sin(tt*.35)*4; }; return 11; },
 };
 const LANDMARK_FALLBACK = b => { pad(b, 10, 10); b.box(6, 6, 6, '#8ca0b8', 0, 0, 0); return 7; };
 
